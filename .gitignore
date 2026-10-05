@@ -9,3 +9,9 @@ __pycache__/
 modal_out/
 
 .vscode/
+modal_out/
+.DS_Store
+
+
+*.toml
+
