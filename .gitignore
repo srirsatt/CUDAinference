@@ -3,3 +3,9 @@
 *.sqlite
 bin/
 __pycache__/
+
+# for modal gpu run
+
+modal_out/
+
+.vscode/
