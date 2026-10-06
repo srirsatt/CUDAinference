@@ -1,6 +1,6 @@
 ARCH ?= sm_75
 NVCC := nvcc
-FLAGS := -03 -std=c++17 -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -Icommon
+FLAGS := -O3 -std=c++17 -gencode arch=compute_$(subst sm_,,$(ARCH)),code=$(ARCH) -Icommon
 
 # targets
 
