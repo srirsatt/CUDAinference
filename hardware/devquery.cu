@@ -1,6 +1,6 @@
 #include <iostream>
 #include <cuda_runtime.h>
-//#include "common.cuh"
+#include "common.cuh"
 
 
 int main() {
