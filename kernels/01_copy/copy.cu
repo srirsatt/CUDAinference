@@ -53,6 +53,16 @@ __global__ void copy_scalar(const float* __restrict__ in, float* __restrict__ ou
 
 }
 
+// copy vec with float4 strides
+
+__global__ void copy_vec4(const float4* __restrict__ in, float4* __restrict__ out, size_t n4) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < n4) {
+        out[i] = in[i];
+    }
+}
+
 int main() {
     std::vector<float> h_in(N);
 
@@ -75,15 +85,34 @@ int main() {
 
     CUDA_CHECK(cudaMemset(d_out, 0, N));
 
-    //float ms = bench_ms([&] { cudaMemcpy(d_out, d_in, BYTES, cudaMemcpyDeviceToDevice); });
+    float ms1 = bench_ms([&] { cudaMemcpy(d_out, d_in, BYTES, cudaMemcpyDeviceToDevice); });
+
+    report("cudaMemcpy test ", ms1);
+
+    verify("cudaMemcpy test ", d_out, h_out, h_in);
+
+    cudaMemset(d_out, 0, BYTES);
+
+    int n4 = N/4;
+
+    int blocks4 = (n4 + 255) / 256;
+
+    float ms3 = bench_ms([&] { copy_vec4<<<blocks4, 256>>>(reinterpret_cast<const float4*>(d_in), reinterpret_cast<float4*>(d_out), N); });
+
+    report("copy_vec4 test", ms3);
+
+    verify("copy_vec4 test", d_out, h_out, h_in);
+
+    cudaMemset(d_out, 0, BYTES);
 
     int blocks = (N + 255) / 256; // threads = 256
 
-    float ms = bench_ms([&] { copy_scalar<<<blocks, 256>>>(d_in, d_out, N); });
+    float ms2 = bench_ms([&] { copy_scalar<<<blocks, 256>>>(d_in, d_out, N); });
 
-    report("copy_scalar test", ms);
+    report("copy_scalar test", ms2);
 
     verify("copy_scalar test", d_out, h_out, h_in);
+
 
     CUDA_CHECK(cudaFree(d_in));
     CUDA_CHECK(cudaFree(d_out));
