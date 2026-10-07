@@ -28,6 +28,18 @@ void verify(const char* name, const float* d_out, std::vector<float> &h_out, con
     }
 }
 
+void report(const char* name, float ms) {
+    // reports time taken for a kernel
+
+    // feed in ms as a float, get back a report of bandwidth and peak bandwidth % comparison
+
+    double bw = gbps(2.0 * BYTES, ms);
+
+    double peakPercent = bw / PEAK_GBPS * 100;
+
+    printf("%-12s  %8.3f ms   %8.3f GB/s  %8.3f%%\n", name, ms, bw, peakPercent);
+}
+
 int main() {
     std::vector<float> h_in(N);
 
