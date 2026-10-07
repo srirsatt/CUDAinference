@@ -56,12 +56,23 @@ __global__ void copy_scalar(const float* __restrict__ in, float* __restrict__ ou
 // copy vec with float4 strides
 
 __global__ void copy_vec4(const float4* __restrict__ in, float4* __restrict__ out, size_t n4) {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (i < n4) {
         out[i] = in[i];
     }
 }
+
+__global__ void copy_vec4_gridstride(const float4* __restrict__ in, float4* __restrict__ out, size_t n4) {
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    size_t stride = gridDim.x * blockDim.x;
+
+    for (size_t i = idx; i < n4; i+=stride) {
+        out[i] = in[i];
+    }
+}
+
 
 int main() {
     std::vector<float> h_in(N);
@@ -112,6 +123,28 @@ int main() {
     report("copy_scalar test", ms2);
 
     verify("copy_scalar test", d_out, h_out, h_in);
+
+    // grid-stride float4: sweep blocks per SM
+    size_t n42 = N / 4;
+    const float4* in4  = reinterpret_cast<const float4*>(d_in);
+    float4*       out4 = reinterpret_cast<float4*>(d_out);
+
+    int sms = 40;  // T4 SM count, from devquery
+    int ks[] = {1, 2, 4, 8, 16, 32};
+
+    for (int k : ks) {
+        int gs_blocks = sms * k;
+        CUDA_CHECK(cudaMemset(d_out, 0, BYTES));
+
+        float gs_ms = bench_ms([&] { copy_vec4_gridstride<<<gs_blocks, 256>>>(in4, out4, n42); });
+
+        char label[32];
+        snprintf(label, sizeof(label), "gridstride k=%d", k);
+        report(label, gs_ms);
+    }
+
+    // verify the last configuration (k=32)
+    verify("gridstride k=32", d_out, h_out, h_in);
 
 
     CUDA_CHECK(cudaFree(d_in));
