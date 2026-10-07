@@ -40,6 +40,19 @@ void report(const char* name, float ms) {
     printf("%-12s  %8.3f ms   %8.3f GB/s  %8.3f%%\n", name, ms, bw, peakPercent);
 }
 
+
+// copy_scalar kernel
+
+__global__ void copy_scalar(const float* __restrict__ in, float* __restrict__ out, size_t n) {
+
+    size_t i = blockIdx.x * blockDim.x + threadIdx.x; // standard practice
+
+    if (i < n) {
+        out[i] = in[i];
+    }
+
+}
+
 int main() {
     std::vector<float> h_in(N);
 
@@ -59,6 +72,18 @@ int main() {
     // wrap for protection
 
     CUDA_CHECK(cudaMemcpy(d_in, h_in.data(), BYTES, cudaMemcpyHostToDevice)); // source->dest 
+
+    CUDA_CHECK(cudaMemset(d_out, 0, N));
+
+    //float ms = bench_ms([&] { cudaMemcpy(d_out, d_in, BYTES, cudaMemcpyDeviceToDevice); });
+
+    int blocks = (N + 255) / 256; // threads = 256
+
+    float ms = bench_ms([&] { copy_scalar<<<blocks, 256>>>(d_in, d_out, N); });
+
+    report("copy_scalar test", ms);
+
+    verify("copy_scalar test", d_out, h_out, h_in);
 
     CUDA_CHECK(cudaFree(d_in));
     CUDA_CHECK(cudaFree(d_out));
